@@ -1,0 +1,6 @@
+{
+  "name": "Lumiere Lookbook",
+  "description": "A luxury, high-end digital fashion editorial lookbook showcasing the Winter Anthology with interactive collections, wishlist curation, and complete-the-look recommendations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
