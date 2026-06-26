@@ -1,70 +1,107 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect } from "react";
-import Navbar from "./components/Navbar";
-import BottomNav from "./components/BottomNav";
-import HomeView from "./components/HomeView";
-import ShopView from "./components/ShopView";
-import ProductDetailView from "./components/ProductDetailView";
-import WishlistView from "./components/WishlistView";
-import CartBagView from "./components/CartBagView";
-import { PRODUCTS } from "./data";
-import { ViewType, Product, CartItem } from "./types";
+import LoadingScreen from "./components/LoadingScreen";
+import Navbar from "./sections/Navbar";
+import Hero from "./sections/Hero";
+import Featured from "./sections/Featured";
+import WhyChoose from "./sections/WhyChoose";
+import Configurator from "./sections/Configurator";
+import Testimonials from "./sections/Testimonials";
+import About from "./sections/About";
+import Contact from "./sections/Contact";
+import Footer from "./sections/Footer";
+import CartDrawer from "./components/CartDrawer";
+import WishlistDrawer from "./components/WishlistDrawer";
+import { Product, CartItem } from "./types";
 
 export default function App() {
-  const [currentView, setView] = useState<ViewType>("home");
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [selectedProductId, setSelectedProductId] = useState<string>("fluid-silk-slip-dress");
-  
-  // Pre-populate with the 4 luxury items from Screen 4 to make the wishlist view instantly gorgeous
-  const [wishlistIds, setWishlistIds] = useState<string[]>([
-    "sculpted-silk-gown",
-    "archive-clutch",
-    "structured-blazer",
-    "lumiere-trench"
-  ]);
+  // Pre-loader state
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Active shopping bag items
+  // Drawer toggles
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+
+  // Configuration state
+  const [selectedProductId, setSelectedProductId] = useState("emerson-boucle-sofa");
+
+  // User list selections state
+  const [wishlistIds, setWishlistIds] = useState<string[]>([
+    "emerson-boucle-sofa",
+    "aurelia-velvet-bed"
+  ]);
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  // Smooth scroll to top on page navigation
+  // Smooth scroll to top on first boot
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" as any });
-  }, [currentView]);
+  }, []);
 
-  // Extract selected product object
-  const selectedProduct = PRODUCTS.find((p) => p.id === selectedProductId) || PRODUCTS[0];
+  const handleSelectProduct = (id: string) => {
+    setSelectedProductId(id);
+    const element = document.getElementById("configurator");
+    if (element) {
+      // Small timeout to allow state rendering
+      setTimeout(() => {
+        element.scrollIntoView({ behavior: "smooth" });
+      }, 50);
+    }
+  };
 
-  const toggleWishlist = (id: string) => {
+  const handleToggleWishlist = (id: string) => {
     setWishlistIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
-  const addToCart = (product: Product, size: string) => {
+  const handleAddToCart = (product: Product, wood: string, color: string, fabric: string) => {
     setCart((prev) => {
-      const existing = prev.find(
-        (item) => item.product.id === product.id && item.selectedSize === size
+      // Look for identical configurations in the existing cart list
+      const existingIdx = prev.findIndex(
+        (item) =>
+          item.product.id === product.id &&
+          item.selectedWood === wood &&
+          item.selectedColor === color &&
+          item.selectedFabric === fabric
       );
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id && item.selectedSize === size
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
+
+      if (existingIdx > -1) {
+        const updated = [...prev];
+        updated[existingIdx].quantity += 1;
+        return updated;
       }
-      return [...prev, { product, selectedSize: size, quantity: 1 }];
+
+      return [
+        ...prev,
+        {
+          product,
+          selectedWood: wood,
+          selectedColor: color,
+          selectedFabric: fabric,
+          quantity: 1
+        }
+      ];
     });
+
+    // Auto trigger the cart drawer slide-out for interactive feedback
+    setIsCartOpen(true);
   };
 
-  const updateCartQuantity = (productId: string, size: string, change: number) => {
+  const updateCartQuantity = (
+    productId: string,
+    wood: string,
+    color: string,
+    fabric: string,
+    change: number
+  ) => {
     setCart((prev) =>
       prev
         .map((item) => {
-          if (item.product.id === productId && item.selectedSize === size) {
+          if (
+            item.product.id === productId &&
+            item.selectedWood === wood &&
+            item.selectedColor === color &&
+            item.selectedFabric === fabric
+          ) {
             return { ...item, quantity: Math.max(0, item.quantity + change) };
           }
           return item;
@@ -73,85 +110,93 @@ export default function App() {
     );
   };
 
-  const removeFromCart = (productId: string, size: string) => {
+  const removeFromCart = (productId: string, wood: string, color: string, fabric: string) => {
     setCart((prev) =>
-      prev.filter((item) => !(item.product.id === productId && item.selectedSize === size))
+      prev.filter(
+        (item) =>
+          !(
+            item.product.id === productId &&
+            item.selectedWood === wood &&
+            item.selectedColor === color &&
+            item.selectedFabric === fabric
+          )
+      )
     );
   };
 
   const clearCart = () => setCart([]);
 
-  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <div className="min-h-screen bg-[#f9f9f9] text-black selection:bg-black selection:text-white flex flex-col justify-between">
-      {/* Top sticky bar */}
-      <Navbar 
-        currentView={currentView} 
-        setView={setView} 
-        cartCount={cartCount} 
-      />
+    <>
+      {/* Luxury Loading Screen Overlay */}
+      {isLoading && <LoadingScreen onComplete={() => setIsLoading(false)} />}
 
-      {/* Main active layout */}
-      <main className="flex-grow">
-        {currentView === "home" && (
-          <HomeView
-            setView={setView}
-            setSelectedCategory={setSelectedCategory}
-            setSelectedProductById={setSelectedProductId}
-          />
-        )}
+      <div className="min-h-screen bg-[#FAF9F6] text-black selection:bg-black selection:text-white flex flex-col justify-between overflow-x-hidden">
+        {/* Sticky Header Nav */}
+        <Navbar
+          cartCount={totalCartCount}
+          wishlistCount={wishlistIds.length}
+          onOpenCart={() => setIsCartOpen(true)}
+          onOpenWishlist={() => setIsWishlistOpen(true)}
+        />
 
-        {currentView === "shop" && (
-          <ShopView
-            setView={setView}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            setSelectedProductById={setSelectedProductId}
+        {/* Website Content Sections */}
+        <main className="flex-grow">
+          {/* Hero Section */}
+          <Hero />
+
+          {/* Featured Collections Masonry Grid */}
+          <Featured
             wishlistIds={wishlistIds}
-            toggleWishlist={toggleWishlist}
+            toggleWishlist={handleToggleWishlist}
+            onSelectProduct={handleSelectProduct}
           />
-        )}
 
-        {currentView === "product-detail" && (
-          <ProductDetailView
-            setView={setView}
-            product={selectedProduct}
-            setSelectedProductById={setSelectedProductId}
+          {/* Value Pillars List */}
+          <WhyChoose />
+
+          {/* 3D Configurator Workshop */}
+          <Configurator
+            selectedProductId={selectedProductId}
+            onSelectProductId={setSelectedProductId}
+            onAddToCart={handleAddToCart}
+            onToggleWishlist={handleToggleWishlist}
             wishlistIds={wishlistIds}
-            toggleWishlist={toggleWishlist}
-            addToCart={addToCart}
           />
-        )}
 
-        {currentView === "wishlist" && (
-          <WishlistView
-            setView={setView}
-            setSelectedProductById={setSelectedProductId}
-            wishlistIds={wishlistIds}
-            toggleWishlist={toggleWishlist}
-            addToCart={addToCart}
-          />
-        )}
+          {/* Customer Reviews Slider */}
+          <Testimonials />
 
-        {currentView === "profile-cart" && (
-          <CartBagView
-            setView={setView}
-            cart={cart}
-            updateCartQuantity={updateCartQuantity}
-            removeFromCart={removeFromCart}
-            clearCart={clearCart}
-          />
-        )}
-      </main>
+          {/* Storytelling Heritage Block */}
+          <About />
 
-      {/* Bottom Nav Bar */}
-      <BottomNav
-        currentView={currentView}
-        setView={setView}
-        cartCount={cartCount}
-        wishlistCount={wishlistIds.length}
-      />
-    </div>
+          {/* Interactive Enquiry Form & Coordinates */}
+          <Contact />
+        </main>
+
+        {/* Brand Footer */}
+        <Footer />
+
+        {/* Slide-out Panels */}
+        <CartDrawer
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          cart={cart}
+          updateCartQuantity={updateCartQuantity}
+          removeFromCart={removeFromCart}
+          clearCart={clearCart}
+        />
+
+        <WishlistDrawer
+          isOpen={isWishlistOpen}
+          onClose={() => setIsWishlistOpen(false)}
+          wishlistIds={wishlistIds}
+          toggleWishlist={handleToggleWishlist}
+          onSelectProduct={handleSelectProduct}
+        />
+      </div>
+    </>
   );
 }
